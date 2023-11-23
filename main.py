@@ -9,6 +9,7 @@ screen_height = 8 * 77
 clock = pygame.time.Clock()
 
 camera_y = 0
+gravity = 0.38
 
 #mapa
 mapa = []
@@ -132,7 +133,7 @@ def movimentacaoPersonagem():
   global velocidade_y, jump, player_x, player_y, player_size, player_speed
   keys = pygame.key.get_pressed()
 
-  if keys[pygame.K_SPACE] and not jump:
+  if keys[pygame.K_UP] and not jump:
     jump = True
     velocidade_y = 15  # Velocidade inicial do pulo
   if keys[pygame.K_LEFT] and player_x > 0:
@@ -145,31 +146,47 @@ def movimentacaoPersonagem():
   elif player_x + player_size >= screen_width:
     player_x = 0 + player_size
 
+# def pulo():
+#   global jump_count, player_y
+#   # Pula constantemente se não estiver pulando no momento
+#   #if not jump:
+#   if jump_count >= -10:
+#     neg = 1
+#     if jump_count < 0:
+#         neg = -1
+#     player_y -= (jump_count ** 2) * 0.5 * neg
+#     jump_count -= 1
+    
+#   else:
+#     jump = True
+#     jump_count = 10
+
 def pulo():
-  global jump_count, player_y, jump, on_platform
-  
-  gravity = 0.38
+  global jump_count, player_y, jump, on_platform, gravity
   # Pula constantemente se não estiver pulando no momento
   #if not jump:
-  if jump_count >= -10 and on_platform:
-     on_platform = True
-     neg = 1
-     if jump_count < 0:
-      on_platform = False
-      neg = -1
-      player_y -= (jump_count ** 2) * 0.42 * neg
-      jump_count -= 1
+  if jump_count >= -10:
+    neg = 1
+    if jump_count < 0:
+        neg = -1
+    player_y -= (jump_count ** 2) * 0.5 * neg
+    jump_count -= 1
     
   else:
-    jump = False
+    jump = True
     jump_count = 10
-    player_y += 2 + gravity
+    player_y += 2
+  
+  # if player_y > screen_height:  # Limit the player to stay within the screen height
+  #       player_y = screen_height - 200
+  #       jump = False
 
 
 def verificaColisao():
-    global score, player_x, player_y, on_platform, inicio, camera_y, jump, jump_count
+    global score, player_x, player_y, on_platform, inicio, camera_y
+    # Verifica colisões
     on_platform = False  # Reset on_platform flag
-
+    
     for platform in platforms:
         if (
             player_y < platform[1] + platform[3]
@@ -180,52 +197,27 @@ def verificaColisao():
             player_y = platform[1] - player_size
             on_platform = True
             inicio = False
-            camera_y = player_y
+            camera_y = player_y  # Update camera_y to follow the player's position
+            # Atualiza a pontuação se a plataforma estiver acima do y da câmera
             if platform[1] < camera_y:
                 score += 1
 
-        elif not on_platform and (inicio == False) and player_y < screen_height - player_size:
-          jump = False  # Stop jumping
-          jump_count = 10
-          player_y += 2
-
-# def verificaColisao():
-#     global score, player_x, player_y, on_platform, inicio, camera_y
-#     # Verifica colisões
-#     on_platform = False  # Reset on_platform flag
-    
-#     for platform in platforms:
-#         if (
-#             player_y < platform[1] + platform[3]
-#             and player_y + player_size > platform[1]
-#             and player_x + player_size > platform[0]
-#             and player_x < platform[0] + platform[2]
-#         ):
-#             player_y = platform[1] - player_size
-#             on_platform = True
-#             inicio = False
-#             camera_y = player_y  # Update camera_y to follow the player's position
-#             # Atualiza a pontuação se a plataforma estiver acima do y da câmera
-#             if platform[1] < camera_y:
-#                 score += 1
-
-#     # Se não estiver em uma plataforma, o jogador está caindo
-#     if not on_platform and not inicio:
+    # Se não estiver em uma plataforma, o jogador está caindo
+    if not on_platform and not inicio:
       
-#         player_y += 2
+        player_y += 2
         
 
 def moviCamera():
     global camera_y, player_y
-    cy = camera_y
-   #Move a câmera para cima conforme o jogador sobe
-    if player_y < cy + 200:
-        cy = player_y - 200
-    # elif player_y > cy + 200:
-    #     cy = player_y + 200
+
+    # Move a câmera para cima conforme o jogador sobe
+    if player_y < camera_y + 200:
+        camera_y = player_y - 200
 
 def geraPlataforma():
   global platform_x, platform_y, camera_y, platform_height, platform_width
+  camera_y = 0
   #Gera novas plataformas conforme a câmera sobe
   while len(platforms) < 10:
       platform_x = random.randint(0, screen_width - platform_width)
@@ -235,6 +227,7 @@ def geraPlataforma():
 
 def removePlataformaAntiga():
   # Remove plataformas antigas
+  global platforms
   platforms = [platform for platform in platforms if platform[1] > camera_y - screen_height]
 
 
@@ -245,6 +238,7 @@ def update(dt):
   verificaColisao()
   moviCamera()
   geraPlataforma()
+  removePlataformaAntiga()
 
   # # Verifica se o personagem atingiu o chão
   # if player_y > screen_width - player_size:
