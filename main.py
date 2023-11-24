@@ -22,6 +22,7 @@ player_y = screen_height - player_size
 player_speed = 15
 jump = False
 jump_count = 10
+velocidade_y = 1.95
 
 on_platform = False
 score = 0
@@ -147,7 +148,7 @@ def movimentacaoPersonagem():
     player_x = 0 + player_size
 
 def pulo():
-  global jump_count, player_y, jump, on_platform, gravity
+  global jump_count, player_y, jump, on_platform, gravity, velocidade_y
   # Pula constantemente se não estiver pulando no momento
   #if not jump:
   
@@ -155,7 +156,7 @@ def pulo():
       neg = 1
       if jump_count < 0:
           neg = -1
-      player_y -= (jump_count ** 2) * 0.42 * neg
+      player_y -= (jump_count ** 2) * 0.32 * neg * velocidade_y
       jump_count -= 1
     
   elif jump_count <= -10 and on_platform == True or (on_platform == False and inicio == True):
@@ -181,7 +182,7 @@ def verificaColisao():
             on_platform = True
             inicio = False
             camera_y = player_y
-            if platform[1] < camera_y:
+            if platform[1] > camera_y:
                 score += 1
 
     if not on_platform and not inicio:
@@ -205,6 +206,7 @@ def geraPlataforma():
       platforms.append(platform)
 
 def removePlataformaAntiga():
+  global platforms
   # Remove plataformas antigas
   platforms = [platform for platform in platforms if platform[1] > camera_y - screen_height]
 
@@ -216,6 +218,7 @@ def update(dt):
   verificaColisao()
   moviCamera()
   geraPlataforma()
+  removePlataformaAntiga()
 
   # # Verifica se o personagem atingiu o chão
   # if player_y > screen_width - player_size:
