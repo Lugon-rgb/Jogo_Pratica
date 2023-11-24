@@ -2,7 +2,7 @@ import pygame, sys, random
 from pygame.locals import *
 
 # VARIÁVEIS
-screen_width = 14 * 77
+screen_width = 10 * 77
 screen_height = 8 * 77
 
 # Define a taxa de atualização
