@@ -4,6 +4,8 @@ from pygame.locals import *
 # VARIÁVEIS
 screen_width = 10 * 77
 screen_height = 8 * 77
+game_over = False
+defeat_font = None
 
 # Define a taxa de atualização
 clock = pygame.time.Clock()
@@ -115,7 +117,7 @@ def load_mapa(filename): # Lê o conteúdo do arquivo para a matriz
   file.close()
 
 def load():
-  global clock, tile, font
+  global clock, tile, font, defeat_font
   
   clock = pygame.time.Clock()
   
@@ -129,6 +131,7 @@ def load():
 
   # Pontuação
   font = pygame.font.Font(None, 36)
+  defeat_font = pygame.font.Font(None, 60)
 
 def movimentacaoPersonagem():
   global velocidade_y, jump, player_x, player_y, player_size, player_speed
@@ -140,7 +143,7 @@ def movimentacaoPersonagem():
   if keys[pygame.K_LEFT] and player_x > 0:
       player_x -= player_speed
   elif player_x <= 0:
-    player_x = 1077 - player_size
+    player_x = (screen_width - 1) - player_size
   
   if keys[pygame.K_RIGHT] and player_x < screen_width - player_size:
       player_x += player_speed
@@ -212,6 +215,7 @@ def removePlataformaAntiga():
 
 
 def update(dt):
+  global game_over
   movimentacaoPersonagem()
   
   pulo()
@@ -219,6 +223,8 @@ def update(dt):
   moviCamera()
   geraPlataforma()
   removePlataformaAntiga()
+  if player_y > screen_height:
+        game_over = True
 
   # # Verifica se o personagem atingiu o chão
   # if player_y > screen_width - player_size:
@@ -232,7 +238,7 @@ def update(dt):
 
 
 def draw(screen):
-  global caixa, chao
+  global caixa, chao, game_over
   
   screen.fill((255,255,255))
   
@@ -246,6 +252,12 @@ def draw(screen):
   draw_player(player_x, player_y)
   draw_platforms(platforms)
   draw_score(score)
+  
+  if game_over == True:
+        defeat_text = defeat_font.render("Você perdeu!", True, "red")
+        text_rect = defeat_text.get_rect(center=(screen_width // 2, screen_height // 2))
+        screen.blit(defeat_text, text_rect.topleft)
+
         
     
 
