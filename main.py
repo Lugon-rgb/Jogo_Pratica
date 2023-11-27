@@ -226,16 +226,6 @@ def update(dt):
   if player_y > screen_height:
         game_over = True
 
-  # # Verifica se o personagem atingiu o chão
-  # if player_y > screen_width - player_size:
-  #     player_y = screen_height - player_size
-  #     jump = False
-  # if player_y > screen_height:
-  #   print("Você perdeu!")
-  #   running = False
-
-
-
 
 def draw(screen):
   global caixa, chao, game_over
@@ -285,23 +275,3 @@ while running:
 
 pygame.quit()
 sys.exit()
-
-
-'''
------------------------------------------------------------------------------------------------------------------------------
-'''
-
-
-
-'''
--------------------------------------------------------------------------------------------------------------------------------
-'''
-  
-#     # Verifica se o jogador atingiu o "novo chão" (fora da tela)
-#     if player_y > height:
-#         print("Você perdeu!")
-#         running = False
-
-'''
----------------------------------------------------------------------------------------------------------------------------------------
-'''
