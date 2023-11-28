@@ -2,8 +2,11 @@ import pygame, sys, random
 from pygame.locals import *
 
 # VARIÁVEIS
-screen_width = 14 * 77
+screen_width = 10 * 77
 screen_height = 8 * 77
+game_over = False
+defeat_font = None
+start_following = False
 
 # Define a taxa de atualização
 clock = pygame.time.Clock()
@@ -22,6 +25,7 @@ player_y = screen_height - player_size
 player_speed = 15
 jump = False
 jump_count = 10
+velocidade_y = 1.45
 
 on_platform = False
 score = 0
@@ -96,10 +100,11 @@ for i in range(0, screen_height, 160):
 # Função para desenhar as plataformas na tela
 def draw_platforms(platforms):
     for platform in platforms:
-        pygame.draw.rect(screen, "white", platform)
+        pygame.draw.rect(screen, "gray", (platform[0], platform[1] - camera_y, platform[2], platform[3]))
+
 
 def draw_player(x, y):
-    pygame.draw.rect(screen, 'white', [x, y, player_size, player_size])
+    pygame.draw.rect(screen, 'gray', [x, y - camera_y, player_size, player_size])
 
 def draw_score(score):
     score_text = font.render("Pontuação: " + str(score), True, "white")
@@ -114,20 +119,42 @@ def load_mapa(filename): # Lê o conteúdo do arquivo para a matriz
   file.close()
 
 def load():
-  global clock, tile, font
-  
-  clock = pygame.time.Clock()
-  
-  #mapa
-  load_mapa("mapa.txt")
-  tile['G'] = pygame.image.load("img/Tiles/grama.png")
-  tile['A'] = pygame.image.load("img/Tiles/aguaMeio.png")
+    global clock, tile, font, defeat_font
 
-  tile['E'] = pygame.image.load("img/Tiles/flutuanteLadoEsquerdo.png")
-  tile['D'] = pygame.image.load("img/Tiles/flutuanteLadoDireito.png")
+    clock = pygame.time.Clock()
 
-  # Pontuação
-  font = pygame.font.Font(None, 36)
+    # mapa
+    try:
+        load_mapa("mapa.txt")
+        tile['G'] = pygame.image.load("img/Tiles/grama.png")
+        tile['A'] = pygame.image.load("img/Tiles/aguaMeio.png")
+        tile['E'] = pygame.image.load("img/Tiles/flutuanteLadoEsquerdo.png")
+        tile['D'] = pygame.image.load("img/Tiles/flutuanteLadoDireito.png")
+    except pygame.error as e:
+        print(f"Error loading image: {e}")
+        sys.exit()
+
+    # Pontuação
+    try:
+        font = pygame.font.Font(None, 36)
+        defeat_font = pygame.font.Font(None, 60)
+    except pygame.error as e:
+        print(f"Error creating font: {e}")
+        sys.exit()
+  
+def load_mapa(filename):
+    global mapa
+    try:
+        with open(filename, "r") as file:
+            for line in file.readlines():
+                mapa.append(line)
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+        sys.exit()
+    except Exception as e:
+        print(f"Error loading file '{filename}': {e}")
+        sys.exit()
+
 
 def movimentacaoPersonagem():
   global velocidade_y, jump, player_x, player_y, player_size, player_speed
@@ -139,7 +166,7 @@ def movimentacaoPersonagem():
   if keys[pygame.K_LEFT] and player_x > 0:
       player_x -= player_speed
   elif player_x <= 0:
-    player_x = 1077 - player_size
+    player_x = (screen_width - 1) - player_size
   
   if keys[pygame.K_RIGHT] and player_x < screen_width - player_size:
       player_x += player_speed
@@ -147,102 +174,136 @@ def movimentacaoPersonagem():
     player_x = 0 + player_size
 
 def pulo():
-  global jump_count, player_y, jump, on_platform, gravity
-  # Pula constantemente se não estiver pulando no momento
-  #if not jump:
-  
-  if jump_count >= -10:
-      neg = 1
-      if jump_count < 0:
-          neg = -1
-      player_y -= (jump_count ** 2) * 0.42 * neg
-      jump_count -= 1
-    
-  elif jump_count <= -10 and on_platform == True or (on_platform == False and inicio == True):
-      jump = True
-      jump_count = 10
-  elif jump_count < -10 and inicio== False:
-    jump_count = -11
-    player_y += 10 ** gravity
-    on_platform = False
+    global jump_count, player_y, jump, on_platform, gravity, velocidade_y
+
+    keys = pygame.key.get_pressed()
+
+    if keys[pygame.K_SPACE] and on_platform and not jump:
+        jump = True
+        jump_count = 10
+
+    if jump:
+        if jump_count >= -10:
+            neg = 1
+            if jump_count < 0:
+                neg = -1
+            player_y -= (jump_count ** 2) * 0.5 * neg
+            jump_count -= 1
+        else:
+            jump = False
+            jump_count = 10
+    else:
+        # Apply gravity when not jumping
+        if player_y + player_size < screen_height:
+            player_y += 5  # Adjust the gravity as needed
 
 
 def verificaColisao():
-    global score, player_x, player_y, on_platform, inicio, camera_y
-    on_platform = False  # Reset on_platform flag
+    global score, player_x, player_y, on_platform, inicio, camera_y, player_size
+
+    # Define the player's hitbox
+    player_hitbox = pygame.Rect(player_x, player_y - camera_y, player_size, player_size)
+
+    on_platform = False
+
     for platform in platforms:
-        if (
-            player_y < platform[1] + platform[3]
-            and player_y + player_size > platform[1]
-            and player_x + player_size > platform[0]
-            and player_x < platform[0] + platform[2]
-        ):
-            player_y = platform[1] - player_size
+        # Define the platform's hitbox
+        platform_hitbox = pygame.Rect(platform[0], platform[1] - camera_y, platform[2], platform[3])
+
+        # Check for collision using the colliderect() method
+        if player_hitbox.colliderect(platform_hitbox):
+            player_y = platform[1] + camera_y - player_size
             on_platform = True
             inicio = False
-            camera_y = player_y
-            if platform[1] < camera_y:
+            if platform[1] > camera_y:
                 score += 1
 
     if not on_platform and not inicio:
         player_y += 2
-        
+
+
 
 def moviCamera():
-    global camera_y, player_y
+    global camera_y, player_y, start_following
 
-    # Move a câmera para cima conforme o jogador sobe
-    if player_y < camera_y + 200:
-        camera_y = player_y - 200
+    if not start_following and player_y < screen_height / 8:
+        start_following = True
+
+    if start_following:
+        target_y = player_y - 200
+        camera_y += (target_y - camera_y) * 0.02
 
 def geraPlataforma():
-  global platform_x, platform_y, camera_y, platform_height, platform_width
-  #Gera novas plataformas conforme a câmera sobe
-  while len(platforms) < 10:
-      platform_x = random.randint(0, screen_width - platform_width)
-      platform_y = camera_y - random.randint(50, 200)
-      platform = [platform_x, platform_y, platform_width, platform_height]
-      platforms.append(platform)
+    global platform_width, platform_height
+    # Generate new platforms at a fixed rate
+    if random.randint(0, 100) < 25:  # Adjust the rate as needed
+        platform_x = random.randint(0, screen_width - platform_width)
+        platform_y = random.randint(int(camera_y) - screen_height, int(camera_y))  # Generate platforms within the visible screen
+        platform = [platform_x, platform_y, platform_width, platform_height]
+        platforms.append(platform)
+
 
 def removePlataformaAntiga():
+  global platforms
   # Remove plataformas antigas
   platforms = [platform for platform in platforms if platform[1] > camera_y - screen_height]
 
 
 def update(dt):
-  movimentacaoPersonagem()
+    global game_over, start_following
+    movimentacaoPersonagem()
   
-  pulo()
-  verificaColisao()
-  moviCamera()
-  geraPlataforma()
+    pulo()
+    verificaColisao()
 
-  # # Verifica se o personagem atingiu o chão
-  # if player_y > screen_width - player_size:
-  #     player_y = screen_height - player_size
-  #     jump = False
-  # if player_y > screen_height:
-  #   print("Você perdeu!")
-  #   running = False
+    if player_y < screen_height / 7:  # Adjust this threshold as needed
+        start_following = True
+
+    if start_following:
+        moviCamera()
+        geraPlataforma()
+        removePlataformaAntiga()
+
+    if player_y > screen_height:
+        game_over = True
 
 
+def draw_background(screen, background_image, camera_y):
+    # Calculate the starting position of the background based on the camera
+    start_x = 0
+    start_y = (camera_y // 128) * 128
+
+    # Draw multiple instances of the background to cover the entire visible screen
+    for i in range(8):  # Number of rows to cover the screen
+        for j in range(14):  # Number of columns
+            screen.blit(background_image, (j * 128, start_y + i * 128))
 
 
 def draw(screen):
-  global caixa, chao
+  global caixa, chao, game_over, start_following
   
   screen.fill((255,255,255))
   
   #pontuacao()
   
   #mapa
-  for i in range(8): 
-    for j in range(14):     
-        screen.blit(tile[mapa[i][j]], ((j * 77), (i * 77)))
+  for i in range(8):
+    for j in range(14):
+        screen.blit(tile[mapa[i][j]], ((j * 77), (i * 77) - camera_y))
+
+  if start_following:
+        # Draw the background tiles only after scrolling starts
+        draw_background(screen, tile['A'], camera_y)
 
   draw_player(player_x, player_y)
   draw_platforms(platforms)
   draw_score(score)
+  
+  if game_over == True:
+        defeat_text = defeat_font.render("Você perdeu!", True, "red")
+        text_rect = defeat_text.get_rect(center=(screen_width // 2, (screen_height // 2) - camera_y))
+        screen.blit(defeat_text, text_rect.topleft)
+
         
     
 
@@ -267,26 +328,14 @@ while running:
       break
 
   pygame.display.update()
+  for event in pygame.event.get():
+    if event.type == QUIT:
+        running = False
+        break
+    try:
+        pygame.display.update()
+    except pygame.error as e:
+        print(f"Error updating display: {e}")
 
 pygame.quit()
 sys.exit()
-
-
-'''
------------------------------------------------------------------------------------------------------------------------------
-'''
-
-
-
-'''
--------------------------------------------------------------------------------------------------------------------------------
-'''
-  
-#     # Verifica se o jogador atingiu o "novo chão" (fora da tela)
-#     if player_y > height:
-#         print("Você perdeu!")
-#         running = False
-
-'''
----------------------------------------------------------------------------------------------------------------------------------------
-'''
