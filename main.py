@@ -6,6 +6,7 @@ screen_width = 10 * 77
 screen_height = 8 * 77
 game_over = False
 defeat_font = None
+start_following = False
 
 # Define a taxa de atualização
 clock = pygame.time.Clock()
@@ -24,7 +25,7 @@ player_y = screen_height - player_size
 player_speed = 15
 jump = False
 jump_count = 10
-velocidade_y = 1.95
+velocidade_y = 1.45
 
 on_platform = False
 score = 0
@@ -99,10 +100,11 @@ for i in range(0, screen_height, 160):
 # Função para desenhar as plataformas na tela
 def draw_platforms(platforms):
     for platform in platforms:
-        pygame.draw.rect(screen, "white", platform)
+        pygame.draw.rect(screen, "white", (platform[0], platform[1] - camera_y, platform[2], platform[3]))
+
 
 def draw_player(x, y):
-    pygame.draw.rect(screen, 'white', [x, y, player_size, player_size])
+    pygame.draw.rect(screen, 'white', [x, y - camera_y, player_size, player_size])
 
 def draw_score(score):
     score_text = font.render("Pontuação: " + str(score), True, "white")
@@ -172,32 +174,36 @@ def pulo():
 
 
 def verificaColisao():
-    global score, player_x, player_y, on_platform, inicio, camera_y
+    global score, player_x, player_y, on_platform, inicio, camera_y, player_size
     on_platform = False  # Reset on_platform flag
     for platform in platforms:
+        # Adjusted player coordinates for camera position
+        adjusted_player_y = player_y - camera_y
+
         if (
-            player_y < platform[1] + platform[3]
-            and player_y + player_size > platform[1]
+            adjusted_player_y < platform[1] + platform[3]
+            and adjusted_player_y + player_size > platform[1]
             and player_x + player_size > platform[0]
             and player_x < platform[0] + platform[2]
         ):
-            player_y = platform[1] - player_size
+            player_y = platform[1] + camera_y - player_size
             on_platform = True
             inicio = False
-            camera_y = player_y
             if platform[1] > camera_y:
                 score += 1
 
     if not on_platform and not inicio:
         player_y += 2
+
         
 
 def moviCamera():
-    global camera_y, player_y
+    global camera_y, player_y, start_following
 
-    # Move a câmera para cima conforme o jogador sobe
-    if player_y < camera_y + 200:
-        camera_y = player_y - 200
+    if start_following:
+        target_y = player_y - 200  # Adjust this value as needed
+        camera_y += (target_y - camera_y) * 0.005  # Adjust the interpolation factor as needed
+
 
 def geraPlataforma():
   global platform_x, platform_y, camera_y, platform_height, platform_width
@@ -215,15 +221,21 @@ def removePlataformaAntiga():
 
 
 def update(dt):
-  global game_over
-  movimentacaoPersonagem()
+    global game_over, start_following
+    movimentacaoPersonagem()
   
-  pulo()
-  verificaColisao()
-  moviCamera()
-  geraPlataforma()
-  removePlataformaAntiga()
-  if player_y > screen_height:
+    pulo()
+    verificaColisao()
+
+    if player_y < screen_height / 8:  # Adjust this threshold as needed
+        start_following = True
+
+    if start_following:
+        moviCamera()
+        geraPlataforma()
+        removePlataformaAntiga()
+
+    if player_y > screen_height:
         game_over = True
 
 
@@ -235,9 +247,9 @@ def draw(screen):
   #pontuacao()
   
   #mapa
-  for i in range(8): 
-    for j in range(14):     
-        screen.blit(tile[mapa[i][j]], ((j * 77), (i * 77)))
+  for i in range(8):
+    for j in range(14):
+        screen.blit(tile[mapa[i][j]], ((j * 77), (i * 77) - camera_y))
 
   draw_player(player_x, player_y)
   draw_platforms(platforms)
@@ -245,7 +257,7 @@ def draw(screen):
   
   if game_over == True:
         defeat_text = defeat_font.render("Você perdeu!", True, "red")
-        text_rect = defeat_text.get_rect(center=(screen_width // 2, screen_height // 2))
+        text_rect = defeat_text.get_rect(center=(screen_width // 2, (screen_height // 2) - camera_y))
         screen.blit(defeat_text, text_rect.topleft)
 
         
