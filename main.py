@@ -178,7 +178,7 @@ def pulo():
 
     keys = pygame.key.get_pressed()
 
-    if keys[pygame.K_SPACE] and on_platform and not jump:
+    if keys[pygame.K_SPACE] or on_platform and not jump:
         jump = True
         jump_count = 10
 
