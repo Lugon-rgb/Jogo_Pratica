@@ -7,6 +7,8 @@ screen_height = 8 * 77
 game_over = False
 defeat_font = None
 start_following = False
+screen_treshold = screen_height / 5.5
+following_intepolatioin = 0.009
 
 # Define a taxa de atualização
 clock = pygame.time.Clock()
@@ -151,56 +153,36 @@ def movimentacaoPersonagem():
   elif player_x + player_size >= screen_width:
     player_x = 0 + player_size
 
-# def pulo():
-#   global jump_count, player_y
-#   # Pula constantemente se não estiver pulando no momento
-#   #if not jump:
-#   if jump_count >= -10:
-#     neg = 1
-#     if jump_count < 0:
-#         neg = -1
-#     player_y -= (jump_count ** 2) * 0.5 * neg
-#     jump_count -= 1
-    
-#   else:
-#     jump = True
-#     jump_count = 10
-
 def pulo():
-  global jump_count, player_y, jump, on_platform
-  
-  gravity = 0.38
+  global jump_count, player_y, jump, on_platform, gravity, velocidade_y
   # Pula constantemente se não estiver pulando no momento
   #if not jump:
-  if jump_count >= -10 and on_platform:
-     on_platform = True
-     neg = 1
-     if jump_count < 0:
-      on_platform = False
-      neg = -1
-      player_y -= (jump_count ** 2) * 0.42 * neg
+  
+  if jump_count >= -10:
+      neg = 1
+      if jump_count < 0:
+          neg = -1
+      player_y -= (jump_count ** 2) * 0.32 * neg * velocidade_y
       jump_count -= 1
     
-  else:
-    jump = False
-    jump_count = 10
-    player_y += 2 + gravity
+  elif jump_count <= -10 and on_platform == True or (on_platform == False and inicio == True):
+      jump = True
+      jump_count = 10
+  elif jump_count < -10 and inicio== False:
+    jump_count = -11
+    player_y += 10 ** gravity
+    on_platform = False
 
 
 def verificaColisao():
-    global score, player_x, player_y, on_platform, inicio, camera_y, jump, jump_count
+    global score, player_x, player_y, on_platform, inicio, camera_y, player_size
     on_platform = False  # Reset on_platform flag
-
     for platform in platforms:
-        # Adjusted player coordinates for camera position
-        adjusted_player_y = player_y - camera_y
+        # Define the platform's hitbox
+        platform_hitbox = pygame.Rect(platform[0], platform[1] - camera_y, platform[2], platform[3])
 
-        if (
-            adjusted_player_y < platform[1] + platform[3]
-            and adjusted_player_y + player_size > platform[1]
-            and player_x + player_size > platform[0]
-            and player_x < platform[0] + platform[2]
-        ):
+        # Check for collision using the colliderect() method
+        if player_hitbox.colliderect(platform_hitbox):
             player_y = platform[1] + camera_y - player_size
             on_platform = True
             inicio = False
@@ -208,10 +190,8 @@ def verificaColisao():
             if platform[1] < camera_y:
                 score += 1
 
-        elif not on_platform and (inicio == False) and player_y < screen_height - player_size:
-          jump = False  # Stop jumping
-          jump_count = 10
-          player_y += 2
+    if not on_platform and not inicio:
+        player_y += 2
 
 # def verificaColisao():
 #     global score, player_x, player_y, on_platform, inicio, camera_y
@@ -240,17 +220,15 @@ def verificaColisao():
         
 
 def moviCamera():
-    global camera_y, player_y
-    cy = camera_y
-   #Move a câmera para cima conforme o jogador sobe
-    if player_y < cy + 200:
-        cy = player_y - 200
-    # elif player_y > cy + 200:
-    #     cy = player_y + 200
+    global camera_y, player_y, start_following
+
+    if start_following:
+        target_y = player_y - 200  # Adjust this value as needed
+        camera_y += (target_y - camera_y) * 0.005  # Adjust the interpolation factor as needed
+
 
 def geraPlataforma():
   global platform_x, platform_y, camera_y, platform_height, platform_width
-  camera_y = 0
   #Gera novas plataformas conforme a câmera sobe
   while len(platforms) < 10:
       platform_x = random.randint(0, screen_width - platform_width)
@@ -271,22 +249,32 @@ def update(dt):
   
     pulo()
     verificaColisao()
-    moviCamera()
-    geraPlataforma()
 
-  # # Verifica se o personagem atingiu o chão
-  # if player_y > screen_width - player_size:
-  #     player_y = screen_height - player_size
-  #     jump = False
-  # if player_y > screen_height:
-  #   print("Você perdeu!")
-  #   running = False
+    if player_y < screen_height / 8:  # Adjust this threshold as needed
+        start_following = True
+
+    if start_following:
+        moviCamera()
+        geraPlataforma()
+        removePlataformaAntiga()
+
+    if player_y > screen_height:
+        game_over = True
 
 
+def draw_background(screen, background_image, camera_y):
+    # Calculate the starting position of the background based on the camera
+    start_x = 0
+    start_y = (camera_y // 128) * 128
+
+    # Draw multiple instances of the background to cover the entire visible screen
+    for i in range(8):  # Number of rows to cover the screen
+        for j in range(14):  # Number of columns
+            screen.blit(background_image, (j * 128, start_y + i * 128))
 
 
 def draw(screen):
-  global caixa, chao, game_over
+  global caixa, chao, game_over, start_following
   
   screen.fill((255,255,255))
   
@@ -296,6 +284,10 @@ def draw(screen):
   for i in range(8):
     for j in range(14):
         screen.blit(tile[mapa[i][j]], ((j * 77), (i * 77) - camera_y))
+
+  if start_following:
+        # Draw the background tiles only after scrolling starts
+        draw_background(screen, tile['A'], camera_y)
 
   draw_player(player_x, player_y)
   draw_platforms(platforms)
