@@ -160,7 +160,7 @@ def movimentacaoPersonagem():
   global velocidade_y, jump, player_x, player_y, player_size, player_speed
   keys = pygame.key.get_pressed()
 
-  if keys[pygame.K_SPACE] and not jump:
+  if keys[pygame.K_UP] and not jump:
     jump = True
     velocidade_y = 15  # Velocidade inicial do pulo
   if keys[pygame.K_LEFT] and player_x > 0:
@@ -202,13 +202,13 @@ def verificaColisao():
     global score, player_x, player_y, on_platform, inicio, camera_y, player_size
 
     # Define the player's hitbox
-    player_hitbox = pygame.Rect(player_x, player_y - camera_y, player_size, player_size)
+    player_hitbox = pygame.Rect(player_x, player_y, player_size, player_size)
 
     on_platform = False
 
     for platform in platforms:
         # Define the platform's hitbox
-        platform_hitbox = pygame.Rect(platform[0], platform[1] - camera_y, platform[2], platform[3])
+        platform_hitbox = pygame.Rect(platform[0], platform[1], platform[2], platform[3])
 
         # Check for collision using the colliderect() method
         if player_hitbox.colliderect(platform_hitbox):
